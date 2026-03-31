@@ -106,6 +106,19 @@ void LD2410S::build_cmd_frame_(uint16_t command, uint16_t sub_command) {
       }
     } break;
 
+    case SN_READ_CMD:
+      break;
+
+    case SN_WRITE_CMD: {
+      uint16_t sn_length = 8;
+      append_seq_data(this->tx_frame_, this->tx_frame_size_, &sn_length);
+      for (int i = 0; i < 8; i++) {
+        uint8_t c = (i < (int)this->pending_sn_.length()) ? (uint8_t)this->pending_sn_[i] : 0x20;
+        append_seq_data(this->tx_frame_, this->tx_frame_size_, &c);
+      }
+      break;
+    }
+
     case CONFIG_MODE_START_CMD:
       append_seq_data(this->tx_frame_, this->tx_frame_size_, &CONFIG_MODE_START_VALUE);
       break;
@@ -208,19 +221,6 @@ void LD2410S::build_cmd_frame_(uint16_t command, uint16_t sub_command) {
     case CFG_GATE_THRESHOLD_SNR_WRITE_CMD:
       append_gate_thresholds(this->tx_frame_, this->tx_frame_size_, sub_command, this->thresholds_snr_);
       break;
-    
-    case SN_READ_CMD:
-      break;
-
-    case SN_WRITE_CMD: {
-      uint16_t sn_length = 8;
-      append_seq_data(this->tx_frame_, this->tx_frame_size_, &sn_length);
-      for (int i = 0; i < 8; i++) {
-        uint8_t c = (i < (int)this->pending_sn_.length()) ? (uint8_t)this->pending_sn_[i] : 0x20;
-        append_seq_data(this->tx_frame_, this->tx_frame_size_, &c);
-      }
-      break;
-    }
 
     default:
       break;
