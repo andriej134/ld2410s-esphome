@@ -254,6 +254,8 @@ class LD2410S : public Component, public uart::UARTDevice {
   // button
   void calibration();
   void factory_reset();
+  // Serial number
+  void write_serial_number_(const std::string &sn);
   // number
   void set_delay(float delay);
   void set_distance_reporting_freq(float distance_reporting_freq);
@@ -333,7 +335,6 @@ class LD2410S : public Component, public uart::UARTDevice {
   void publish_serial_number_(const std::string &sn, bool force_publish = false);
   void parse_ack_sn_write_(const uint8_t *data);
   void parse_ack_sn_read_(const uint8_t *data);
-  void write_serial_number_(const std::string &sn);
   void read_serial_number_();
   void publish_threshold_trigger_(bool force_publish = false);
   void publish_threshold_hold_(bool force_publish = false);
