@@ -296,6 +296,7 @@ class LD2410S : public Component, public uart::UARTDevice {
 
   uint32_t energy_values_[16] = {};
   std::string energy_values_str_ = "";
+  std::string pending_sn_ = "";
 
   void send_();
   void build_cmd_frame_(uint16_t command, uint16_t sub_command = NO_SUB_CMD);
@@ -330,7 +331,9 @@ class LD2410S : public Component, public uart::UARTDevice {
   void publish_energy_values_(bool force_publish = false);
   void publish_fw_version_(const std::string &version, bool force_publish = false);
   void publish_serial_number_(const std::string &sn, bool force_publish = false);
+  void parse_ack_sn_write_(const uint8_t *data);
   void parse_ack_sn_read_(const uint8_t *data);
+  void write_serial_number_(const std::string &sn);
   void read_serial_number_();
   void publish_threshold_trigger_(bool force_publish = false);
   void publish_threshold_hold_(bool force_publish = false);

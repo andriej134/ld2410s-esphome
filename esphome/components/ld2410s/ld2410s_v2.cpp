@@ -337,6 +337,25 @@ void LD2410S::publish_serial_number_(const std::string &sn, bool force_publish) 
   }
 #endif
 }
+void LD2410S::parse_ack_sn_write_(const uint8_t *data) {
+  uint16_t read_position = 0;
+  uint16_t ack = 0;
+  read_seq_data(data, read_position, &ack);
+  if (ack == 0x0000) {
+    ESP_LOGI(TAG, "Serial Number written successfully");
+  } else {
+    ESP_LOGW(TAG, "Serial number write failed");
+  }
+}
+void LD2410S::write_serial_number_(const std::string &sn) {
+  if (sn.length() > 8) {
+    ESP_LOGW(TAG, "Serial number must be exactly 8 characters, got %d", sn.length());
+    return;
+  }
+  this->pending_sn_ = sn;
+  this->tx_schedule_.append(SN_WRITE_CMD);
+}
+
 void LD2410S::publish_threshold_trigger_(bool force_publish) {
   std::string vals = format_int(this->thresholds_trigger_, 16, 2);
 

@@ -73,6 +73,18 @@ void LD2410S::send_() {
       }
       break;
 
+    case SN_READ_CMD:
+      break;
+
+    case SN_WRITE_CMD: {
+      uint16_t sn_length = 8;
+      append_seq_data(this->tx_frame_, this->tx_frame_size_, &sn_length);
+      for (int i = 0; i < 8; i++) {
+        uint8_t c = (i < (int)this->pending_sn_.length()) ? (uint8_t)this->pendning_sn_[i] : 0x20;
+        append_seq_data(this->tx_frame_, this->tx_frame_size_, &c);
+      }
+    }
+
     case TxCmdState::SENT:
     default:
       break;
@@ -454,6 +466,12 @@ void LD2410S::parse_cmd_frame_() {
       if (this->rx_.payload_size() < 68)
         break;
       this->parse_ack_threshold_snr_read_(data);
+      break;
+    
+    case SN_WRITE_CMD | CMD_CONFIRMATION:
+      if (this->rx_.payload_size() < 4)
+        break;
+      this->parse_ack_sn_write_(data);
       break;
 #endif
 
