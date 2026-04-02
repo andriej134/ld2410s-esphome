@@ -1,0 +1,177 @@
+substitutions:
+  uart_tx: GPIO16   
+  uart_rx: GPIO17   
+  presence: GPIO2   # pin OUT czujnika
+ 
+esphome:
+  name: hlk-ld2410s-c6
+  friendly_name: HLK-LD2410S-C6
+ 
+  # External antenna configuration
+  on_boot: 
+    priority: 800
+    then:
+      - wifi.disable: 
+      - output.turn_off: pin3
+      - delay: 100ms
+      - switch.turn_on: pin14
+      - wifi.enable:
+ 
+esp32:
+  board: esp32-c6-devkitc-1
+  framework:
+    type: esp-idf
+ 
+# Enable logging
+logger:
+  level: DEBUG
+  logs: 
+    component: ERROR
+ 
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "XXXXXXXXX"
+ 
+ota:
+  - platform: esphome
+    password: "XXXXXXXXX"
+ 
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+ 
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Hlk-Ld2410S-C6 Fallback Hotspot"
+    password: "XXXXXXXXX"
+ 
+captive_portal:
+ 
+external_components:
+  - source: github://andriej134/ld2410s-esphome@feature/serial-number-write
+    components: [ld2410s]
+uart:
+  id: uart_bus
+  tx_pin: ${uart_tx}
+  rx_pin: ${uart_rx}
+  baud_rate: 115200
+  parity: NONE
+  stop_bits: 1
+ 
+ld2410s:
+  id: ld2410s_hub
+  uart_id: uart_bus
+ 
+sensor:
+  - platform: ld2410s
+    target_distance:
+      name: Odległość od obiektu  # Odległość do wykrytego obiektu w metrach
+ 
+binary_sensor:
+# Czy wykryto obecność (TRYB UART)
+#  - platform: gpio
+#    name: "Wykryto"
+#    pin:
+#      number: 1
+#      mode:
+#        input: true
+#        pullup: true
+#    device_class: presence
+  - platform: ld2410s
+    has_target:
+      name: Wykryto obecność      # True, gdy czujnik wykrywa człowieka w zasięgu
+    has_calibration_running:
+      name: Kalibracja w toku     # True, gdy trwa automatyczna kalibracja progów
+# Czy wykryto obecność (TRYB 0/1)
+  - platform: gpio
+    name: "Obecność"
+    pin:
+      number: ${presence}
+      mode:
+        input: true
+        pullup: true
+      inverted: false
+    device_class: presence          # Typ encji w HA: ikona i zachowanie jak czujnik obecności
+ 
+text_sensor:
+  - platform: ld2410s
+    fw_version:
+      name: Wersja firmware         # Wersja oprogramowania czujnika
+    threshold_triggers:
+      name: Progi wyzwalania        # Wartości progów wyzwalania dla każdej bramki odleglości
+    threshold_holds:
+      name: Progi podtrzymania      # Wartości progów podtrzymania wykrycia dla każdej bramki
+    threshold_snrs:
+      name: Progi SNR               # Stosunki sygnał/szum dla każdej bramki
+    energy_values:
+      name: Wartości energii        # Poziomy energii mikrofalowej dla każdej bramki odległości
+    serial_number:
+      name: Numer seryjny czujnika
+      icon: mdi:barcode
+number:
+  - platform: ld2410s
+    max_distance:
+      name: Maks. odległość wykrywania        # Górna granica zasięgu czujnika (w bramkach, 1 bramka ~ 0.7m)
+    min_distance:
+      name: Min. odległość wykrywania         # Dolna granica zasięgu czujnika
+    no_delay:
+      name: Opóźnienie zaniku sygnału         # Czas (w s) przez jaki czujnika trzyma "obecność" po zniknięciu obiektu
+    status_reporting_frequency:
+      name: Częstotliwość raportu statusu     # Jak często czujnik wysyła raport statusu (obecność/brak)
+    distance_reporting_frequency:
+      name: Częstotliwość raportu odległości  # Jak często aktualizowana jest odległość
+    threshold_trigger:
+      name: Próg wyzwalania                   # Czułość wyzwalania dla wybranej bramki (threshold_selected_gate)
+    threshold_hold:
+      name: Próg podtrzymania                 # Czułość podtrzymania dla wybranej bramki
+    threshold_snr:
+      name: Próg SNR                          # Minimalny SNR dla wybranej bramki (Wysoki próg - czujnik wykrywa tylko, gdy jest bardzo pewny obecności - może przegapić nieruchomą osobę, niski próg - czujnik jest bardziej czuły, może reagować na zakłócenia)
+    threshold_selected_gate:
+      name: Wybrana bramka progu              # Numer bramki (0-15) do edycji progów powyżej
+ 
+button:
+  - platform: ld2410s
+    calibration:
+      name: Rozpocznij autokalibrację         # Uruchamia automatyczną kalibrację progów czujnika (domyślnie 2 min)
+    factory_reset:
+      name: Reset do ustawień fabrycznych     # Przywraca domyślne ustawienia czujnika
+
+select:
+  - platform: ld2410s
+    response_speed:
+      name: Prędkość reakcji                  # Szybkość reakcji czujnika: wolniejsza = mniej fałszywych alarmów
+  
+# External antenna configuration
+output:
+  - platform: gpio
+    id: pin3
+    pin: GPIO03
+ 
+switch:
+  - platform: gpio
+    pin: GPIO14
+    restore_mode: ALWAYS_OFF
+    name: Internal Wifi Antenna On/Off
+    id: pin14
+# LD2410S Config
+  - platform: ld2410s
+    minimal_output:
+      name: Minimalny tryb wyjścia            # Włącz, aby czujnik wysyłął tylko podstawowe dane (oszczędność zasobów)
+    
+
+text:
+  - platform: template
+    name: "Zapisz numer seryjny"
+    icon: mdi:barcode-edit
+    mode: text
+    optimistic: true
+    on_value:
+      then:
+        - lambda: |-
+            id(ld2410s_hub).write_serial_number_(x);
+ 
+# OPIS BRAMEK CZUJNIKA LD2410S
+# ---------------------------------
+# [BRAMKA 0]  | [BRAMKA 1]  | [BRAMKA 2] | [BRAMKA 3] | [BRAMKA 4] | [BRAMKA 5] | [BRAMKA 6] | [BRAMKA 7] | [BRAMKA 8] | [BRAMKA 9] | [BRAMKA 10] | [BRAMKA 11] | [BRAMKA 12] | [BRAMKA 13] | [BRAMKA 14] | [BRAMKA 15]
+# 0-0.7m      | 0.7-1.4m    | 1.4-2.1m   |  2.1-2.8m  | 2.8-3.5m   |  3.5-4.2m  | 4.2-4.9m   |  4.9-5.6m  | 5.6-6.3m   |  6.3-7.0m  | 7.0-7.7m    | 7.7-8.4m    | 8.4-9.1m    | 9.1-9.8m    | 9.8-10.5m   | 10.5-11.2m
